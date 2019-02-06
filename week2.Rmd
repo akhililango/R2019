@@ -9,6 +9,7 @@ output:
     df_print: paged
 ---
 
+<!-- http://84.89.132.1/~satorra/dades/R2018EXERCISES.html -->
 ## 1. 
 Let us generate data as given in the question. Notice that there are 10 sides. So, the sample can tabulated into ten classes. This is stored in the variable $O$.  
 We are testing the Null Hypothesis of unbiasedness. This means that the sample frequency of each class is equal. 
