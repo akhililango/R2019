@@ -1,0 +1,255 @@
+---
+title: "Week 2"
+subtitle: "(For: Professor Albert Satorra Brucart)"
+author: "Akhil Ilango"
+date: "January 2019"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## 1. 
+Let us generate data as given in the question. Notice that there are 10 sides. So, the sample can tabulated into ten classes. This is stored in the variable $O$.  
+We are testing the Null Hypothesis of unbiasedness. This means that the sample frequency of each class is equal. 
+$$H_0\;:\;p_0=p_1...=p_9=\frac{1}{\text{number of classes}}=\frac{1}{10}$$
+The sample quantities that the Null hypothesis would generate is given by 
+$$m_i\;=\;np_i\;\forall\;i$$
+This is given by the variable $E$.  
+The Pearson's Chi-squared test statistic is given by 
+$$X^2\;=\;\sum_i\frac{(x_i-m_i)^2}{m_i}$$
+This statistic is stored in the variable $T$.  
+We know that asymptotically, $X^2$ has a \textit{chi-square} distribution with a degree of freedom $df=k-1=9$. Now, we find the p-value using the \texttt{pchisq} function. 
+```{r Ex. 1}
+set.seed(1)
+dice <- 0:9
+
+n <- 80
+m1 <- sample(dice,n,replace = TRUE)
+O <- table(m1)
+E <- n*rep(1/10,10)
+T <- sum(((O-E)**2)/E)
+cat('p-value (n=80): ',(pvalue<- 1-pchisq(T,9)),'\n')
+
+n <- 800
+m1 <- sample(dice,n,replace = TRUE)
+O <- table(m1)
+E <- n*rep(1/10,10)
+T <- sum(((O-E)**2)/E)
+cat('p-value (n=8000): ',(pvalue<- 1-pchisq(T,9)),'\n')
+```
+
+The null hypothesis cannot be rejected in both cases at a $1\%,\;5\%$ or $\;10\%$ hypothesis.
+
+## 2. 
+We load the \texttt{foreign} package to read various file formats.
+```{r Ex. 2}
+library(foreign) 
+paisos <- read.spss("http://84.89.132.1/~satorra/dades/PAISOS.SAV",
+                  use.value.labels = TRUE, to.data.frame =TRUE, 
+                  use.missings = TRUE)
+spaisos <- na.omit(subset(paisos,select=c(3,2,4,5,6,7,8,9)))  # removing missing data
+summary(paisos)
+```
+
+This dataset contains variables \texttt{IDH}(ID number), \texttt{NIVELL}(level of develop of the country), \texttt{PAIS}(country), \texttt{ESPVIDA}(life expectancy), CONT(continent), \texttt{CALORIES}(average calories intake in country), \texttt{SANITAT}(sanitation level) etc. The outcome variable here is \texttt{ESPVIDA}.
+
+Exploratory data analysis:  
+First, let us plot Life Expectancy vs Level of Development of the country. This graph suggests that \texttt{NIVELL} can be an important variable in explaining \texttt{ESPVIDA}. Let us also try to quantify this intuition.
+```{r Ex. 2.2}
+par(cex.lab = 0.8)
+plot(x = paisos$ESPVIDA, y = paisos$NIVELL, col = paisos$NIVELL, cex=0.5, pch = 8,
+     xlab = "Life Expectancy", ylab = "Level of Development of the country")
+legend("topleft", c("baix","mitjx","alt"), pch = 8, col = c(1,2,3), 
+       title= "Legend")
+
+# Define labels
+spaisos$NIVELL <- as.numeric(factor(spaisos$NIVELL, levels = c("baix","mitj\xe0", "alt"), 
+                                    labels=c(1:3)))
+cat('Correlation: ', cor(spaisos$ESPVIDA, spaisos$NIVELL))
+
+# plot(paisos$NIVELL,paisos$ESPVIDA,ylab='Life Expectancy',xlab='Development')
+```
+
+We can see that there is a strong correlation between \texttt{NIVELL} and \texttt{ESPVIDA}. 
+
+Next, let us plot \texttt{ESPVIDA} vs \texttt{CALORIES} along with a regression line. This is done by finding the coefficients using \texttt{lm}. Then, \texttt{abline} is used to add a the line to the plot.
+```{r Ex. 2.3}
+beta <- lm(paisos$CALORIES~paisos$ESPVIDA)$coef
+plot(x = paisos$ESPVIDA, y = paisos$CALORIES, type = 'p', pch = 8,
+     cex=0.5, col = paisos$NIVELL, 
+     xlab = "Life Expectancy", ylab = "Avg. Calories")
+abline(a = beta[1], b = beta[2], col = 'black', lty = 1, lwd = 1)
+legend("topleft", c("baix","mitjx","alt"), pch = 8, col = c(1,2,3), title= "Legend")
+```
+
+\texttt{CALORIES} fits a linear model well as can be seen from the graph. Also, we see that the errors are approximately homoskedastic. This is a good sign for evaluating if the coefficient estimates are consistent.
+
+A density plot of \texttt{ESPVIDA} tells us that there might be a bimodal distribution. We see two peaks, one with very low life expectancy, and another considerably high. There is a possibility that it is a mixture of two distributions and so, the low values might fit a different model than the high values. 
+```{r Ex. 2.4a}
+y <- spaisos$ESPVIDA
+hist(y, breaks = 10,  col = 'grey', border = "blue", prob = TRUE, 
+     xlab = "Life Expectancy", main = "Life Expectancy density plot")
+lines(density(y), lwd = 2, col = 2)
+abline(v = mean(y), col = 3, lwd = 2)
+abline(v = median(y), col = 4, lwd = 2)
+legend(x = "topleft", c("Density plot", "Mean", "Median"),
+ col = c(2, 3, 4), lwd = c(2, 2, 2), cex = 0.7)
+```
+
+Let us concentrate on the variables given in the question. We have an unoredered variable \texttt{CONT}. This means that it doesn't make sense to number them in any order. Therefore, we define dummy variables for these. Then, we fit a linear model and obtain an estimate of the in-sample $R^2$.
+```{r Ex. 2.4b}
+cat('\n Values that CONT takes: \n')
+table(spaisos$CONT); cat('\n')
+# Define labels and dummy for unordered variable
+CONT <- matrix(nrow(spaisos),ncol = length(levels(spaisos$CONT)))
+name <- paste(levels(spaisos$CONT),sep = "")
+spaisos$CONT <- factor(spaisos$CONT, 
+                  levels = c("\xc0frica","\xc0sia", "Am\xe8rica", "Europa", "Oceania"), 
+                  labels=c(1:5))
+CONT <- psych::dummy.code(spaisos$CONT)
+
+X <- as.matrix(cbind(spaisos[,c(2,4,5,7,8)],CONT[,1:5]))
+colnames(X[,6:10]) <- name[1:5]
+
+fit2 <- lm(y ~ X)
+print('Coefficients:')
+print(fit2$coefficients[-1])
+```
+
+We notice that one of the coefficients in $NA$. This is because this variable is a low-variance predictor. This can cause problems in our analysis as above. Therefore, we need to avoid such variables
+```{r Ex. 2.4c}
+X <- as.matrix(cbind(spaisos[,c(2,4,5,7,8)],CONT[,1:4]))
+colnames(X[,6:9]) <- name[1:4]
+y <- scale(y)
+X[,-1] <- apply(X[,-1],2,scale)
+
+fit2 <- lm(y ~ X)
+print('Coefficients:')
+print(fit2$coefficients[-1])
+cat('\n R^2: ',cor(y,X%*%fit2$coefficients[-1])^2,'\n')
+```
+
+We find a positive relationship with Literacy rate and a negative relationship with Agriculture (% GDP).
+
+These variables are able to explain $88\%$ of the variability of \texttt{ESPVIDA}.
+$$\hat{R}^2\;=\;1-\frac{Var(\hat{y})}{Var(y)}$$
+But we need to be careful about this statistic as there is the risk of overfitting. 
+```{r}
+cat('Correlation between Development and Literacy Rate: ',cor(X[,1],X[,5]),'\n')
+cat('Correlation between Development and Literacy Rate: ',cor(X[,1],X[,3]),'\n')
+cat('Summary: Notice the p-values: \n')
+summary(fit2)$coefficients
+
+cat('\n Without Literacy Rate and % Agriculture in GDP \n')
+X <- as.matrix(cbind(spaisos[,c(2,4,7)],CONT[,1:4]))
+y <- scale(y)
+X[,-1] <- apply(X[,-1],2,scale)
+
+fit2b <- lm(y ~ X)
+cat('Summary: Notice the p-values: \n')
+summary(fit2b)$coefficients
+cat('\n R^2: ',cor(y,X%*%fit2b$coefficients[-1])^2,'\n')
+```
+
+In short, we can say that people living in Asia and in countries of low development have low life expectancy.
+
+## 3.
+```{r Ex. 3}
+set.seed(1)
+n <- 100
+mu <- 0; sig <- 0.4; a <- 0; b <- 1
+cat('A sample: \n')
+x <- runif (n, min=a, max=b)
+e <- rnorm (n, mean=mu, sd=sig)
+y <- 1 + 3*x + e
+data <- cbind (x,y)
+head (data)
+cat('\n Summary of x: \n')
+summary (x)
+cat('\n Summary of y: \n')
+summary (y)
+cat('\n Covariance: ',cov (x,y),'\n')
+```
+
+```{r Ex. 3.1}
+hist(x)
+hist(y)
+```
+
+The distributions do not agree perfectly. This is because the sample size is small. 
+```{r Ex. 3.2}
+cat('Covariance: ', cov(x,y), '\n')
+cat('Correlation: ', cor(x,y))
+```
+
+$$Cov(x,y)\;=\;\mathbb{E}\left([x-\mathbb{E}(x)][y-\mathbb{E}(y)]\right)$$
+$$Cor(x,y)\;=\;\frac{Cov(x,y)}{\sqrt{Var(x)Var(y)}}$$
+Covariance is a measure of how one variable varies with the other. Correlation is a normalized version of this measure. Correlation values are between -1 and 1. Positive correlation means that the variance of one variable can be explained by the positive values of the other variables. A large value implies that it can explain to a large extent. But one subtle point here is that we cannot comment about the causality. Either of the variables could have caused the other or there might be a latent variable which caused both.
+```{r Ex. 3.3}
+plot(x,y,type='p', main='Scatterplot')
+```
+
+We see a linear dependence between the two variables.
+```{r Ex. 3.45}
+set.seed(1)
+fit3 <- lm(y~x)
+beta <- fit3$coef
+sd <- summary(fit3)$coefficients[2,2]
+plot(x, y, type = 'p', pch = 8, cex=0.5, col = 'grey')
+abline(a = beta[1], b = beta[2], col = 'black', lty = 1, lwd = 1)
+# abline(a = beta[1]+2*sd, b = beta[2], col = 'black', lty = 3, lwd = 1)
+# abline(a = beta[1]-2*sd, b = beta[2], col = 'black', lty = 3, lwd = 1)
+cat('Coefficients by lm: ', beta, '\n')
+
+beta1 = cov(x,y)/var(x)
+beta0 = mean(y) - beta1*mean(x)
+plot(x, y, type = 'p', pch = 8, cex=0.5, col = 'grey')
+abline(a = beta0, b = beta1, col = 'black', lty = 1, lwd = 1)
+cat('Coefficients by OLS formula: ', beta0, beta1,'\n')
+
+X <- cbind(1, x)
+Y <- y
+b <- (solve(t(X)%*%X)) %*% (t(X)%*%Y)
+cat('\n Coefficients by OLS formula (matrix): \n')
+(beta <- b)
+resid <- Y - X%*%b
+sd <- sqrt((t(resid) %*% resid) / (nrow(X) - ncol(X)))
+plot(x, y, type = 'p', pch = 8, cex=0.5, col = 'grey')
+abline(a = beta[1], b = beta[2], col = 'black', lty = 1, lwd = 1)
+# abline(a = beta[1]+2*sd, b = beta[2], col = 'black', lty = 3, lwd = 1)
+# abline(a = beta[1]-2*sd, b = beta[2], col = 'black', lty = 3, lwd = 1)
+cat('\n The covariate matrix: \n')
+head (X)
+```
+
+The coefficients are close to the data generating process but with larger sample, we can achieve better results.
+
+```{r Ex. 3.5}
+sigb <- 0.1
+
+e <- rnorm(n,mu,sig)
+y <- 1+3*x+e
+data <- cbind(x,y)
+
+fit3b <- lm(y~x)
+beta <- fit3b$coef
+sd <- summary(fit3b)$coefficients[2,2]
+plot(x, y, type = 'p', pch = 8, cex=0.5, col = 'grey')
+abline(a = beta[1], b = beta[2], col = 'black', lty = 1, lwd = 1)
+abline(a = beta[1]+2*sd, b = beta[2], col = 'black', lty = 3, lwd = 1)
+abline(a = beta[1]-2*sd, b = beta[2], col = 'black', lty = 3, lwd = 1)
+beta <- fit3$coef
+sd <- summary(fit3)$coefficients[2,2]
+abline(a = beta[1], b = beta[2], col = 'red', lty = 1, lwd = 1)
+abline(a = beta[1]+2*sd, b = beta[2], col = 'red', lty = 3, lwd = 1)
+abline(a = beta[1]-2*sd, b = beta[2], col = 'red', lty = 3, lwd = 1)
+legend('topleft',legend = c(expression(sigma == 0.4),expression(sigma[b] == 0.1)),col = c('red','black'),lty=1,lwd=1)
+cat('Coefficients by lm: ', beta, '\n')
+```
+
+We see that the points are closer to the regression line because the errors are drawn from a more steeper distribution (low noise) i.e. it has low values. This means that we are able to explain the outcome variable $y$ more clearly by using the covariate $x$.  
+
+Also, note the variance of the estimator. 
+$$\widehat{Var(\beta|X)}\;=\;\widehat{\sigma}^2(X^TX)^{-1}\;=\;\frac{e^Te}{n-p}(X^TX)^{-1}$$  
+This gives better confidence bounds.

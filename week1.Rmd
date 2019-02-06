@@ -1,0 +1,434 @@
+---
+title: "Week 1"
+subtitle: "(For: Professor Albert Satorra Brucart)"
+author: "Akhil Ilango"
+date: "January 2019"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+ <!-- http://84.89.132.1/~satorra/R2014/R2017Homeworks.pdf -->
+## 1. Practice of Computation
+Here, we have a population data with discrete uniform distribution. The domain of this distribution is $s=(0,1,2,... K)$. All the values are equally likely to be observed with probability $\frac{1}{K+1}$ since there are $K+1$ terms. Let's take $K=100$. We would like to compute the mean and variance of the given data.
+```{r Ex. 1}
+K <- 100
+x1 <- seq(0,K)
+cat('Mean by R function:', mean(x1), '\n')
+
+m_a <- (min(x1)+max(x1))/2
+cat('Mean by distribution Formula:', m_a, '\n')
+
+m_b <- sum(x1)/length(x1)
+cat('Mean by estimate formula:', m_b, '\n','\n')
+
+cat('Variance by R function:', var(x1), '\n')  # using R function
+
+var_s_a <- sum((x1-m_b)**2)/K     # by formula 1
+cat('Variance by Formula 1:', var_s_a, '\n')
+
+var_s_b <- (K+1)*(K+2)/12       # by formula 2
+cat('Variance by Formula 2:', var_s_b, '\n')
+
+A1 <- sum(x1**2)
+A2 <- K*(K+1)*(2*K+1)/6     # the formula is for natural numbers
+A1==A2
+```
+First, we compare the mean obtained via three ways:  
+
+* using R function  
+We use the function \texttt{mean}. $\hat{\mu}\;=\;\texttt{mean}(x)$.
+
+* using distribution formula  
+We know that for a discrete uniform distribution $x\sim$ U$[a,b]$, we have $\mu\;=\;\frac{a+b}{2}$. If these values are given to us, we can directly use them. Since, $a$ and $b$ are the end points, one way to recover them from the data is by finding the minimum and maximum values. $a=\texttt{min}(x),\;\;b=\texttt{max}(x)$. Note that here, it is the true value and not an estimate. This is because we are using information about the shape of the true distribution.
+
+* using the sample estimate  
+An unbiased estimate for any given sample is given by $$\hat{\mu}\;=\;\frac{1}{n}\sum_{i=1}^nx_i$$ where $n$ is the sample size and $x={x_1,x_2,...x_n}$.  
+
+Overall, we see that all three methods give us the same answer.
+
+Second, we compare the variance obtained via three ways:
+
+* using R function  
+We use the function \texttt{var}. $\hat{\sigma}^2\;=\;\texttt{var}(x)$.
+
+* using Formula 1  
+Here, we use the first formula given in the question $$\hat{\sigma}^2\;=\;\frac{1}{K}\sum_{i=1}^K \left(x_i\;-\;\hat{\mu}\right)^2$$. This is an unbiased estimator of variance. Note that we have $K+1$ as sample size.
+
+* using Formula 2  
+Here, we use an expnasion of the above formula. This is also given in the question. $$\hat{\sigma}^2\;=\;\frac{(K+1)(K+2)}{12}$$. This is obtained by using the general formula for sum of squares of a sequence $\sum_{i=1}^N i^2\;=\;\frac{N(N+1)(2N+1)}{6}$.
+
+Overall, we see that all three methods give us the same answer.
+
+## 2. Simulation
+
+Since this exercise requires sampling many times on multiple occassions, let us define a function. This can help us keep our code compact.
+```{r sampling}
+# defining a function for sampling
+ex2 <- function(data,iterations,n_sample,how){
+  set.seed(1)
+  mu <- rep(0,iterations)
+  
+  # method 1
+  # for (i in 1:iterations){
+  # x <- sample(data, n_sample, replace=how)
+  # mu[i] <- mean(x)
+  # }
+  
+  # method 2
+  x <- as.matrix(replicate(iterations,{sample(data,n_sample, replace=how)}))
+  mu <- colMeans(x)
+  
+  # return the vector of estimated means
+  return(mu)
+}
+```
+In this fucntion, we use \texttt{set.seed(1)} to define a reference point for random number generation. This gives us same random numbers every time we try this exercise. This is useful for falsifiability of results. In this function, we take as arguments, the data, number of iterations, size of each sample and a logical variable to notify if sampling with or without replacement. Then, the function samples from the data in each iteration and computes the sample mean for each sample. This value is returned.
+
+### (a)  
+In this exercise, we are concerned with the variance of sample mean and the variance of population. From a given population data, we draw many samples to study this.
+```{r Ex. 2a}
+
+data <- 30:100
+n_sample <- 10
+iterations <- 100
+mu_rep <- mu_norep <- rep(0,iterations)
+
+mu_rep <- ex2(data,iterations,n_sample,TRUE)
+mu_norep <- ex2(data,iterations,n_sample,FALSE)
+
+cat('Variance of sample mean (with replacement):', var(mu_rep), '\n')
+cat('Variance of sample mean (without replacement):', var(mu_norep), '\n')
+
+cat('Variance of population:', var(data), '\n')
+cat('(Variance of population)/(Sample size):', var(data)/n_sample)
+```
+The variables \texttt{data} and \texttt{nsample} are defined as given in question. We take the number of iterations to be 100. To obtain the estimate of sample mean, we call the function \texttt{ex2} that we defined earlier. We know that for a sample mean
+\begin{align*}
+\mathbb{E}[\hat{\mu}]\;&=\;\mathbb{E}[\frac{1}{N}\sum_{i=1}^N x_i]\\
+&=\;\frac{1}{N}\sum_{i=1}^N \mathbb{E}(x_i)\\
+&=\;\frac{1}{N}[\sum_{i=1}^N\mu]\\
+&=\;\mu
+\end{align*}
+It is an unbiased estimate of the population mean.
+\begin{align*}
+\mathbb{V}ar[\hat{\mu}]\;&=\;\mathbb{V}ar[\frac{1}{N}\sum_{i=1}^N x_i]\\
+&=\;\frac{1}{N}\sum_{i=1}^N \mathbb{V}ar(x_i)\\
+&=\;\frac{1}{N^2}[\sum_{i=1}^N\sigma^2]\\
+&=\;\frac{\sigma^2}{N}
+\end{align*}
+Therefore, it is not the same as the population mean. This is also the result we get in the computation.
+
+### (b)
+```{r Ex. 2b}
+set.seed(1)
+n_sample <- 500
+x <- sample(data,n_sample,replace = TRUE)
+summary(x)
+hist(x, main='Histogram of x (n=500)')
+
+n_sample <- 5000
+x <- sample(data,n_sample,replace = TRUE)
+hist(x, main='Histogram of x (n=5000)')
+
+n_sample <- 500
+iterations <- 100
+mu_rep <- ex2(data, iterations, n_sample,TRUE)
+cat('\n', 'For 100 iterations:', '\n')
+cat('Variance of sample mean (with replacement):', var(mu_rep), '\n')
+cat('Variance of population:', var(data), '\n')
+cat('(Variance of population)/(Sample size):', var(data)/n_sample, '\n')
+
+iterations <- 10^4
+mu_rep <- ex2(data, iterations, n_sample,TRUE)
+cat('\n', 'For 10^4 iterations:', '\n')
+cat('Variance of sample mean (with replacement):', var(mu_rep), '\n')
+cat('Variance of population:', var(data), '\n')
+cat('(Variance of population)/(Sample size):', var(data)/n_sample)
+```
+As argued in the previous exercise, we do not obtain the variance of sample mean as equal to the variance of the data. Also, we observe that we have an asymptotically consistent estimator.
+$$\mathbb{V}ar[\hat{\mu}]\;=\;\mathbb{V}ar[\frac{1}{N}\sum_{i=1}^N x_i]\xrightarrow{p}\frac{\sigma^2}{N}$$
+
+We do not obtain a normal distribution as we are sampling with replacement with equal probability of drawing any of the values. This means that we will get an approximately discrete uniform distribution. This can be seen more clearly as the sample size increases.
+
+### (c)
+```{r Ex. 2c}
+
+n_sample <- 10
+iterations <- 100
+mu_rep <- ex2(data, iterations, n_sample, TRUE)
+hist(mu_rep, main='Histogram of mu_rep (100 iterations)')
+qqnorm(scale(mu_rep))
+abline(0,1)
+
+iterations <- 10^4
+mu_rep <- ex2(data, iterations, n_sample, TRUE)
+hist(mu_rep, # histogram
+ breaks = 50,
+ col = 'grey', # column color
+ border = "blue", 
+ prob = TRUE,  # show densities instead of frequencies
+ main='Histogram of mu_rep (10^4 iterations)')
+
+lines(density(mu_rep), # density plot
+ lwd = 2,
+ col = 2)
+
+abline(v = mean(mu_rep),
+ col = 3,
+ lwd = 2)
+abline(v = median(mu_rep),
+ col = 4,
+ lwd = 2)
+abline(v = c(mean(mu_rep)+2*sqrt(var(mu_rep)),mean(mu_rep)-2*sqrt(var(mu_rep))),
+ col = 5,
+ lty = 2,
+ lwd = 2)
+
+legend(x = "topright", # location of legend within plot area
+ c("Density plot", "Mean", "Median","2 sigma"),
+ col = c(2, 3, 4, 5),
+ lwd = c(2, 2, 2,2))
+
+qqnorm(scale(mu_rep))
+abline(0,1)
+```
+
+Since our sampling is independent in each iteration and we are drawing from the same distribution (uniformly from same data values), our procedure satisfied the \textit{IID} assumption. Therefore, applying the Lindberg-Levy Central Limit Theorem, we have the following result
+$$\hat{\mu}\;\sim\;\mathcal{N}(\mu,\sigma^2)$$
+
+We see this result more clearly as we increase the number of iterations. This shows that the estimator is asymptotically normal.
+
+
+## 3.  
+This is an exercise to practice using R to do some calculations. 
+```{r}
+C <- 25000
+r <- 0.05/12
+n <- 360 #600
+A <- (r*C*(1+r)^n)/((1+r)^n-1)
+cat('Monthly payment (30 years): $',A,'\n')
+
+C <- 25000
+r <- 0.05/12
+n <- 600
+A <- (r*C*(1+r)^n)/((1+r)^n-1)
+cat('Monthly payment (50 years): $',A,'\n')
+```
+
+
+Also, this exercise introduces the use of **functions**. Here, we have defined the function named *payment*. This takes values of $n$ as input and gives the monthly payment as output. Writing functions are useful when the formula is complicated and the same calculation has to be performed many times.
+```{r}
+n <-15*12
+r <- 6/1200
+C <-200000
+A <- r*((1+r)**n)*C/(((1+r)**n) -1)
+cat('Monthly payment (15 years): $',A,'\n')
+
+n <- (20:50)*12
+payment <- function(n){ r*((1+r)**n)*C/(((1+r)**n) -1)}
+plot(20:50, payment(n), type="l",xlab = 'years', ylab = 'monthly payment (in $)')
+```
+
+
+## 4. Plotting
+Let us generate data as given in the question.
+```{r Ex. 4}
+mu_x <- 1.7
+sig_x <- 0.3
+mu_e <- 0
+sig_e <- 0.8
+N <- 6000
+x <- rnorm(n = N, mean = mu_x, sd = sig_x)
+e <- rnorm(n = N, mean = mu_e, sd = sig_e)
+y <- 12+3*x+e
+```
+
+First, we visualize the scatterplot for the generated data.
+Then, we plot two families of datapoints to explore the usage of plots in R. The first half of $x$ has been considered as one family and the other half as the second family.  We use different symbols, colors and a legend to highlight the difference.
+```{r Ex. 4.1}
+
+plot(x = x, y = y, type = 'p', pch=1, cex=0.5)
+
+# plotting families
+plot(x = c(x[1:3000], x[3001:6000]), y = c(y[1:3000],y[3001:6000]), type = 'p', 
+     pch=c(1,2), cex= c(0.5,0.5), col = c('black','red'), xlab = 'x',ylab = 'y', 
+     main = 'Scatter Plot')
+
+legend("topleft", c("FamilyBlack","FamilyRed"), pch=c(1,2), col = c(1,2), title= "Legend")
+```
+
+Here, we have made a scatterplot using the \texttt{plot} function. \texttt{type} gives the type of plot (e.g, 'p' gives scatter plot, 'l' gives lines etc.). The argument \texttt{pch} gives the plotting symbol. Using different values for this argument gives different symbols (e.g, pch=1 gives circles, pch=2 gives triangles etc.). This can be useful to differentiate families among the plotted points.
+
+Similarly, the argument \texttt{cex} refers to the symbol size. \texttt{col} gives the color of the symbols. The value can be given as numbers (which have a pre-defined meaning in R, e.g, col=1 gives black, col=2 gives red etc.) or can be expressed between quotes.
+
+\texttt{xlab}, \texttt{ylab} and \texttt{main} give the label of x-axis, label of y-axis and the plot title respectively.
+
+Legend is defined in the second plot to help understand the plot. It is a good exercise to add the legend.
+
+### 4.2
+We use the \texttt{lm} function from R to fit a Linear Regression model on the data. We get an \texttt{object} as an output which contains a lot of information. An \texttt{object} is like a collection of information. We extract the required information (e.g, coefficent estimates, coefficient estimate standard deviation etc.) using a \texttt{\$} symbol as shown below. The information contained in such \texttt{object} can also be studied by looking at the variables windown in R.
+```{r Ex. 4.2}
+summary(lm(y~x))        
+beta <- lm(y~x)$coef
+plot(x = x, y = y, type = 'p', pch=1, cex= 0.5, col = 'grey', xlab = 'x',ylab = 'y', 
+     main = 'Scatter Plot')
+# abline(a = beta[1], b = beta[2], col = 'black', lty = 1, lwd = 1)
+abline(lm(y~x), col = 'black', lty = 1, lwd = 1)
+```
+
+We can edit the line type (e.g, lty=1 gives solid line, lty=2 gives dashed line etc.) using \texttt{lty} and the line width using \texttt{lwd}. We use the line color as \textit{black} and points in \textit{grey} for good visualization.
+
+### 4.3
+Let us define a function that takes a sample from the given population and plots the regression line over the scatter plot. Here, the arguments are the population data and sample size. The plot also includes the 95% confidence interval. We combine the concepts of sub-plots and for loops. We use the \texttt{par} function to determine the style of our subplot. And importantly, \texttt{mfrow(m,n)} tells that we will make a matrix of plots with $m$ rows and $n$ columns.
+```{r}
+ex3 <- function(x,y,n){
+  loc = sample(x = 1:N,size = n, replace = TRUE)
+  xi <- x[loc]
+  yi <- y[loc]
+  ifit <- lm(yi~xi)
+  betai <- ifit$coefficients
+  sd <- summary(ifit)$coefficients[2,2]
+  title <- paste("Sample ", i)
+  plot(x = xi, y = yi, type = 'p', pch=1, cex= 0.5, col = 'gray', xlab = 'x',ylab = 'y', 
+       main = title, axes = FALSE)
+  abline(a = betai[1], b = betai[2], col = 'black')
+  abline(a = beta[1], b = beta[2], col = 'red')
+  abline(a = betai[1]+2*sd, b = betai[2], col = 'black', lty = 3)
+  abline(a = betai[1]-2*sd, b = betai[2], col = 'black', lty = 3)
+}
+```
+
+```{r Ex. 3.3}
+set.seed(1)
+iterations <- 9
+i <- 1
+n <- 20
+
+par(pty = "m", mfrow = c(3, 3), cex.lab = 0.2 , cex.main = 1, mar = c(2, 2, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0));
+# mar, oma, mgp to define margins. 
+# Please See https://www.rdocumentation.org/packages/graphics/versions/3.5.1/topics/par
+
+while (i <= iterations){
+  ex3(x,y,n)                  # create the plot by calling the function
+  # define x- axis only at last row of subplots for neatness
+  if (i %in% c(7, 8, 9)){ axis(1, col = "grey40", col.axis = "grey20",  
+                               at = seq(0.9, 2.4, 0.3)) }   
+  # define y- axis only at first column of subplots for neatness
+  if (i %in% c(1, 4,7)){ axis(2, col = "grey40", col.axis = "grey20", 
+                              at = seq(15, 19, 1)) }
+  box(col = "grey60")
+  i <- i+1
+}
+mtext("x axis", side = 1, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("y axis", side = 2, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("For n = 20", side = 3, outer = TRUE, cex = 1.2, col = "grey20")
+```
+
+### 4.4
+We see that in small samples the variance of the OLS estimate increases as we move to small samples. This can be seen by plotting the 95% confidence bands around the estimates. Below, we plot for the case when we sample 500 datapoints instead of 20. This concept is evident by looking at both the graphs. Note that the axis ranges are the same in both the graphs. Therefore, the graphs are visually comparable. 
+```{r Ex. 4.4}
+n <- 500
+i <- 1
+
+par(pty = "m", mfrow = c(3, 3), cex.lab = 0.2 , cex.main = 1, mar = c(2, 2, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0));
+while (i <= iterations){
+  ex3(x,y,n)
+  if (i %in% c(7, 8, 9)){ axis(1, col = "grey40", col.axis = "grey20", 
+                               at = seq(0.9, 2.4, 0.3)) }
+  if (i %in% c(1, 4,7)){ axis(2, col = "grey40", col.axis = "grey20", 
+                              at = seq(15, 19, 1)) }
+  box(col = "grey60")
+  i <- i+1
+}
+mtext("x axis", side = 1, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("y axis", side = 2, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("For n = 500", side = 3, outer = TRUE, cex = 1.2, col = "grey20")
+```
+
+Also, we see that the estimates are biased in small sample though theroretically, this should not be the case if the same assumptions hold. One explanation could the violation of exogenity or homoskedasticity assumption on $\epsilon$ in the small sample. 
+
+Let us compare the distribution of dependent variable. Let us define another function for this.
+
+```{r}
+ex34 <- function(x,y,n){
+  loc = sample(x = 1:N,size = n, replace = TRUE)
+  xi <- x[loc]
+  yi <- y[loc]
+  title <- paste("Sample ", i)
+  plot(density(yi), col = 'gray', xlab = 'y',ylab = 'Prob', 
+       main = title, axes = FALSE)
+}
+
+ex34q <- function(x,y,n){
+  loc = sample(x = 1:N,size = n, replace = TRUE)
+  xi <- x[loc]
+  yi <- y[loc]
+  title <- paste("Sample ", i)
+  qqnorm(scale(yi), col = 'gray', xlab = 'y',ylab = 'Prob', 
+       main = title, axes = FALSE)
+  abline(0,1)
+}
+```
+
+```{r Ex. 4.4 Distribution}
+set.seed(1)
+i <- 1
+n <- 20
+par(pty = "m", mfrow = c(3, 3), cex.lab = 0.2 , cex.main = 1, mar = c(1, 1, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0));
+while (i <= iterations){
+  ex34(x,y,n)        
+  box(col = "grey60")
+  i <- i+1
+}
+mtext("y", side = 1, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("Probability Density", side = 2, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("For n = 20", side = 3, outer = TRUE, cex = 1.2, col = "grey20")
+
+set.seed(1)
+i <- 1
+n <- 20
+par(pty = "m", mfrow = c(3, 3), cex.lab = 0.2 , cex.main = 1, mar = c(1, 1, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0));
+while (i <= iterations){
+  ex34q(x,y,n)        
+  box(col = "grey60")
+  i <- i+1
+}
+mtext("Theoretical quantiles", side = 1, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("Sample quantiles", side = 2, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("For n = 20", side = 3, outer = TRUE, cex = 1.2, col = "grey20")
+
+set.seed(1)
+i <- 1
+n <- 500
+par(pty = "m", mfrow = c(3, 3), cex.lab = 0.2 , cex.main = 1, mar = c(1, 1, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0));
+while (i <= iterations){
+  ex34(x,y,n)        
+  box(col = "grey60")
+  i <- i+1
+}
+mtext("y", side = 1, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("Probability Density", side = 2, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("For n = 500", side = 3, outer = TRUE, cex = 1.2, col = "grey20")
+
+set.seed(1)
+i <- 1
+n <- 500
+par(pty = "m", mfrow = c(3, 3), cex.lab = 0.2 , cex.main = 1, mar = c(1, 1, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0));
+while (i <= iterations){
+  ex34q(x,y,n)        
+  box(col = "grey60")
+  i <- i+1
+}
+mtext("Theoretical quantiles", side = 1, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("Sample quantiles", side = 2, outer = TRUE, cex = 0.7, col = "grey20")
+mtext("For n = 500", side = 3, outer = TRUE, cex = 1.2, col = "grey20")
+```
+
+The property of CLT can be observed here.
