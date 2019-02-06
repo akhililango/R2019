@@ -131,18 +131,18 @@ print(fit2$coefficients[-1])
 cat('\n R^2: ',cor(y,X%*%fit2$coefficients[-1])^2,'\n')
 ```
 
-We find a positive relationship with Literacy rate and a negative relationship with Agriculture (% GDP).
+We find a positive relationship with \texttt{ALFAB} and a negative relationship with \texttt{HABMETG}.
 
 These variables are able to explain $88\%$ of the variability of \texttt{ESPVIDA}.
 $$\hat{R}^2\;=\;1-\frac{Var(\hat{y})}{Var(y)}$$
-But we need to be careful about this statistic as there is the risk of overfitting. 
+But we need to be careful about this statistic as there is the risk of including too many variables and reducing the power of our estimation. 
 ```{r}
-cat('Correlation between Development and Literacy Rate: ',cor(X[,1],X[,5]),'\n')
-cat('Correlation between Development and Literacy Rate: ',cor(X[,1],X[,3]),'\n')
+cat('Correlation between Development and ALFAB: ',cor(X[,1],X[,5]),'\n')
+cat('Correlation between Development and HABMETG: ',cor(X[,1],X[,3]),'\n')
 cat('Summary: Notice the p-values: \n')
 summary(fit2)$coefficients
 
-cat('\n Without Literacy Rate and % Agriculture in GDP \n')
+cat('\n Without ALFAB and % HABMETG: \n')
 X <- as.matrix(cbind(spaisos[,c(2,4,7)],CONT[,1:4]))
 y <- scale(y)
 X[,-1] <- apply(X[,-1],2,scale)
