@@ -76,10 +76,10 @@ We can see that there is a strong correlation between \texttt{NIVELL} and \textt
 
 Next, let us plot \texttt{ESPVIDA} vs \texttt{CALORIES} along with a regression line. This is done by finding the coefficients using \texttt{lm}. Then, \texttt{abline} is used to add a the line to the plot.
 ```{r Ex. 2.3}
-beta <- lm(paisos$CALORIES~paisos$ESPVIDA)$coef
-plot(x = paisos$ESPVIDA, y = paisos$CALORIES, type = 'p', pch = 8,
+beta <- lm(paisos$ESPVIDA~paisos$CALORIES)$coef
+plot(y = paisos$ESPVIDA, x = paisos$CALORIES, type = 'p', pch = 8,
      cex=0.5, col = paisos$NIVELL, 
-     xlab = "Life Expectancy", ylab = "Avg. Calories")
+     ylab = "Life Expectancy", xlab = "Avg. Calories")
 abline(a = beta[1], b = beta[2], col = 'black', lty = 1, lwd = 1)
 legend("topleft", c("baix","mitjx","alt"), pch = 8, col = c(1,2,3), title= "Legend")
 ```
@@ -105,9 +105,9 @@ table(spaisos$CONT); cat('\n')
 # Define labels and dummy for unordered variable
 CONT <- matrix(nrow(spaisos),ncol = length(levels(spaisos$CONT)))
 name <- paste(levels(spaisos$CONT),sep = "")
-spaisos$CONT <- factor(spaisos$CONT, 
-                  levels = c("\xc0frica","\xc0sia", "Am\xe8rica", "Europa", "Oceania"), 
-                  labels=c(1:5))
+# spaisos$CONT <- factor(spaisos$CONT, 
+#                   levels = c("\xc0frica","\xc0sia", "Am\xe8rica", "Europa", "Oceania"), 
+#                   labels=c(1:5))
 CONT <- psych::dummy.code(spaisos$CONT)
 
 X <- as.matrix(cbind(spaisos[,c(2,4,5,7,8)],CONT[,1:5]))
@@ -142,7 +142,7 @@ cat('Correlation between Development and HABMETG: ',cor(X[,1],X[,3]),'\n')
 cat('Summary: Notice the p-values: \n')
 summary(fit2)$coefficients
 
-cat('\n Without ALFAB and % HABMETG: \n')
+cat('\n Without ALFAB and HABMETG: \n')
 X <- as.matrix(cbind(spaisos[,c(2,4,7)],CONT[,1:4]))
 y <- scale(y)
 X[,-1] <- apply(X[,-1],2,scale)
