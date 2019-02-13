@@ -1,0 +1,198 @@
+---
+title: "Week 3"
+subtitle: "(For: Professor Albert Satorra Brucart)"
+author: "Akhil Ilango"
+date: "Winter 2019"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r Required Packages}
+library("foreign")
+library("car")
+library("psych")
+source("routinesv2.R")
+```
+
+<!-- http://84.89.132.1/~satorra/dades/R2018EXERCISES.html -->
+
+## 5.
+```{r Ex. 5}
+data5 <- read.spss("http://84.89.132.1/~satorra/R2014/properties.sav",to.data.frame =TRUE)
+attach(data5)
+names(data5)
+
+# data5$price[which(data5$surface==max(data5$surface[sold==1]))]
+```
+
+Converting the Price using $log$ is useful for many reasons. Refer to the link below.
+<!-- https://stats.stackexchange.com/questions/107610/what-is-the-reason-the-log-transformation-is-used-with-right-skewed-distribution -->
+```{r Ex. 5.1}
+y <- price
+hist(y[sold==1]/1000,breaks=50,col=rgb(0,0,0,0.5),main = 'Histogram of Sale Price',
+     xlab = 'Sale Price (in hundred thoudand $)', xlim = c(0,700), ylim = c(0,50))
+abline(v = mean(y[sold==1]/1000), col = rgb(0,0,0,1), lwd = 1.5)
+par(new=TRUE)
+hist(y[sold==0]/1000,breaks=50,col=rgb(0,0,1,0.3),main = '',xlab = '',
+     xlim = c(0,700), ylim = c(0,50))
+abline(v = mean(y[sold==0]/1000), col = rgb(0,0,1,1), lwd = 1.5)
+legend('topright',c('Transaction Value',
+        'Offer Value'),lwd=3,col=c(rgb(0,0,0,0.5),rgb(0,0,1,1)))
+
+y <- log(price)
+hist(y[sold==1],breaks=50,col=rgb(0,0,0,0.5),main = 'Histogram of Sale Price',
+     xlab = 'log(Sale Price/1000)',xlim = c(10.5,13.5), ylim = c(0,50))
+abline(v = mean(y[sold==1]), col = rgb(0,0,0,1), lwd = 1.5)
+par(new=TRUE)
+hist(y[sold==0],breaks=50,col=rgb(0,0,1,0.3),main = '',
+     xlab = '',xlim = c(10.5,13.5), ylim = c(0,50))
+abline(v = mean(y[sold==0]), col = rgb(0,0,1,1), lwd = 1.5)
+legend('topleft',c('Transaction Value',
+        'Offer Value'),lwd=3,col=c(rgb(0,0,0,0.5),rgb(0,0,1,1)))
+```
+
+We see that \texttt{log} transformation give a transformation with thinner tails. This gives a closer distribution to the Normality assumption which is important for OLS.  
+Moreover, notice that the mean of the price of unsold properties (grey line) lie to the left of the mean of the price of sold properties (blue line).  
+This doesn't mean that the offer price has increased. It is possible that the expensive houses are unsold and their offer values could have fallen. Thus, we need to estimate a model and try to predict the prices.
+
+To do some statistical analysis, we first need to transform the varibles into convenient formats. Then, let us perform a simple linear regression.
+```{r Ex. 5.2}
+# Define labels for ordered variables
+rural <- factor(data5$rural, levels = levels(data5$rural), labels = c(1:2))
+pool <- factor(data5$pool, levels = levels(data5$pool), labels = c(1:2))
+habSize <- factor(data5$habSize, levels = levels(data5$habSize), labels=c(1:3))
+region <- factor(data5$region, levels = levels(data5$region), labels=c(1:37))
+REG <- matrix(nrow(data5),ncol = length(levels(data5$region)))
+name <- paste(levels(data5$region),sep = "")
+REG <- psych::dummy.code(data5$region)
+
+mu <- mean(y)
+sd <- sd(y)
+y <- scale(y)
+X <- as.matrix(cbind(rural,pool,scale(data5$surface),habSize,region))
+colnames(X)[3] <- 'surface'
+Xd <- cbind(rural,pool,scale(data5$surface),habSize,REG)
+colnames(Xd)[3] <- 'surface'
+cat('Covariates: ',colnames(X),'\n')
+
+fit5 <- lm(y~X) #regressing all data
+cat('\n Coefficients (Full): ', fit5$coefficients[-1],'\n')
+fit51 <- lm(y[sold==1]~X[sold==1,]) #regressing sold properties
+cat('\n Coefficients (Sold): ', fit51$coefficients[-1],'\n')
+fit52 <- lm(y[sold==0]~X[sold==0,]) #regressing unsold properties
+cat('\n Coefficients (Unsold): ', fit52$coefficients[-1],'\n')
+
+fit5d <- lasso.bic(y,Xd) #regressing all data
+cat('\n Total number of covariates:',length(fit5d$coef!=0))
+cat('\n Non-zero beta covariates:',length(fit5d$coef[which(fit5d$coef!=0)]),'\n')
+cat('\n Coefficients (Lasso): ', fit5d$coef[which(fit5d$coef!=0)],'\n')
+
+fit5g <- glm(y~X)
+cat('\n Coefficients (GLM): ', fit5g$coefficients[-1],'\n')
+
+fit5s <- lm(y~rural+pool+scale(data5$surface)+habSize+region,subset = sold==1)
+cat('\n Coefficients (OLS): ', fit5s$coefficients[-1],'\n')
+# refer appendix for full summary
+```
+
+We report the entire summary at the end of this file.  
+\texttt{rural} has a large negative coefficient in all the cases. Also, it is is significant at the $0.1\%$ level (p-value $<\;0.001$).  
+The importance of surface area (\texttt{surface}) has remained important and has a co-efficient of around $0.2$.  
+The valuation of \texttt{pool} and \texttt{habSize} has decreased. This is evident from the decrease in their coefficients. Expecially, \texttt{habSize} is not considered as an important factor in pricing now, according to this regression.  
+\texttt{region} doesn't seem to contribute much. This might be because the other variables are correlated with region and might already explain most of the characteristics of the regions themselves. Therefore, we may remove \texttt{region} from our model. But note that this might give a more optimistic evaluation of other covariates.
+
+Finally, just to introduce LASSO. (An alternative may be to consider GLM.)
+
+### Post-fit Analysis
+```{r Ex. 5.3}
+res <- fit5$residuals
+yhat <- fit5$fitted.values
+
+plot(yhat,res)
+abline(h=0,lty=3)
+```
+
+We see that the residual plot is not homoskedastic. This signifies the prescence of influential datapoints. These datapoints influence the coefficients and have lower residuals. Moreover, some points are scattered sparsely towards the lower end. This shows that there are outliers with uncharacteristically low prices. This is also evident from the left tail in the histogram we plotted earlier for the log(\texttt{price}). (refer Robust Statistics to know more about these concepts.)
+
+Next, we plot partial regression plots. Consider the OLS model we use.
+*Partial regression coefficients* are obtained from combined regression $$y\;=\;b_1X_1\;+\;b_2X_2\;+...+\;b_nX_n$$
+and *Regression Coefficients* are obtained from separate regressions. $$y\;=\;b_iX_i\;\;\forall i$$
+Both give the same results only if we have pairwise orthogonal elements. 
+```{r}
+#using plot function
+par(pty = "m", mfrow = c(3, 2), cex.lab = 0.2 , cex.main = 1, mar = c(2, 2, 1, 0), 
+    oma = c(1, 1, 1.5, 1), mgp = c(2, 0.5, 0))
+b <- fit5$coefficients
+plot(X[,1], y, main=bquote('y vs' ~ .(colnames(X)[1])))
+abline(a= b[1], b = b[2], col='grey')
+text(1.6, 12, bquote(b[2] ~ '=' ~ .(round(b[2],4))),cex = .8)
+plot(X[,2], y, main=bquote('y vs' ~ .(colnames(X)[2])))
+abline(a= b[1], b = b[3], col='grey')
+text(1.6, 12, bquote(b[3] ~ '=' ~ .(round(b[3],4))),cex = .8)
+plot(X[,3], y, main=bquote('y vs' ~ .(colnames(X)[3])))
+abline(a= b[1], b = b[4], col='grey')
+text(1.6, 12, bquote(b[4] ~ '=' ~ .(round(b[4],4))),cex = .8)
+plot(X[,4], y, main=bquote('y vs' ~ .(colnames(X)[4])))
+abline(a= b[1], b = b[5], col='grey')
+text(1.6, 11, bquote(b[5] ~ '=' ~ .(round(b[5],4))),cex = .8)
+plot(X[,5], y, main=bquote('y vs' ~ .(colnames(X)[5])))
+abline(a= b[1], b = b[6], col='grey')
+text(30, 11, bquote(b[6] ~ '=' ~ .(round(b[6],4))),cex = .8)
+mtext("Partial regression plots", side = 3, line = 0.15, outer = TRUE)
+
+#using avPlots
+avPlots(fit5)
+```
+
+One immediate way to evaluate collinearity is to look at the correlation plots. This can be used as a primary step before moving to more sophisticated tests. In this plot we see the correlations are intuitive. Importantly, \texttt{region} has significant positive correlation with \texttt{rural} and significant negative correlation with \texttt{pool}. This adds to the argument made earlier about the possibility of \texttt{region} being redundant. 
+```{r correlation plots}
+cor_total <- cor(X)
+corrplot::corrplot(cor_total ,method = "circle",order = "FPC",bg = "white",tl.cex = 0.6,
+                   tl.col = "black")
+```
+
+Let us try to build models without \texttt{region}. We evaluate the models using the Estimated In-sample $R^2$.
+$$R^2\;=\;1-\frac{Var(\hat{y})}{Var(y)}$$
+We test these models on the sold properties. We will later use these models to predict the prices of unsold properties. This is called out-of-sample predictions. We use the co-efficients obtained to predict prices to compare with the offer values. Therefore, we exclude the unsold properties while fitting the models.
+```{r Ex 5.4}
+fit5a <- lm(y[sold==1]~X[sold==1,-5])
+cat('\n R^2 (lm y ~): ',cor(y[sold==1],X[sold==1,-5]%*%fit5a$coefficients[-1])^2,'\n')
+fit5b <- lm(scale(log(data5$price[sold==1]/surface[sold==1]))~X[sold==1,c(-3,-5)])
+cat('\n R^2 (lm y/s ~): ',cor(scale(log(data5$price[sold==1]/surface[sold==1])),X[sold==1,c(-3,-5)]%*%fit5b$coefficients[-1])^2,'\n')
+
+fit5bd <- lasso.bic(y = y[sold==1]/surface[sold==1],x = Xd[sold==1,-3])
+cat('\n R^2 (lasso y/s ~): ',cor(y[sold==1]/surface[sold==1],Xd[sold==1,-3]%*%fit5bd$coef[-1])^2,'\n')
+cat('\n R^2 (lasso y ~): ',cor(y[sold==1]/surface[sold==1],Xd[sold==1,]%*%fit5d$coef[-1])^2,'\n')
+```
+
+The log(\texttt{price}) model performs better than the log(\texttt{price}/\texttt{surface}).
+
+Let us predict the prices and test if there has been a lowering of prices. 
+```{r}
+ypred <- X[sold==0,-5]%*%fit5a$coefficients[-1]
+cor(y[sold==0],ypred)^2
+res <- fit5a$residuals
+# hist(exp(mu+sd*res)/1000,breaks = 50,xlab='Reduction in offer value (in thousands)',main='Reduction')
+# cat('Average Change :', exp(mu+sd*mean(res)))
+```
+
+The estimated $R^2$ is very low which means that the predictions are very different from the offer values. Also, the residuals are positive meaning that the predictions are higher than the offer value. This means there has been a fall in the offer values.  
+Plotting the histogram of the residuals, we find that there is a large positive bias. Recall that we are comparing $\frac{\log(\texttt{prices})-\mu}{\sigma}$. Converting the mean of the residuals
+$$avg. change\;=\;\exp\{\mu+\sigma\bar{e}\}$$
+
+The average drop is around two hundred thousand. But recall that our estimated model may not be accurate and there may be other confounding variables we are not aware of. And note that I have not used the variable \texttt{region} in the analysis. The above analysis is to illustrate the methods only.
+
+# Appendix
+## 5.
+```{r Ex. 5.A}
+summary(fit5)
+summary(fit51)
+summary(fit52)
+summary(fit5a)
+summary(fit5b)
+summary(fit5d)
+summary(fit5g)
+summary(fit5s)
+```
