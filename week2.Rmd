@@ -2,7 +2,7 @@
 title: "Week 2"
 subtitle: "(For: Professor Albert Satorra Brucart)"
 author: "Akhil Ilango"
-date: "January 2019"
+date: "Winter 2019"
 output:
   pdf_document: default
   html_document:
