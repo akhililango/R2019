@@ -118,7 +118,7 @@ print('Coefficients:')
 print(fit2$coefficients[-1])
 ```
 
-We notice that one of the coefficients in $NA$. This is because this variable is a low-variance predictor. This can cause problems in our analysis as above. Therefore, we need to avoid such variables
+We notice that one of the coefficients in $NA$. This is because for $k$ categories, we only need $k-1$ dummies. The last category is predictable from the rest.
 ```{r Ex. 2.4c}
 X <- as.matrix(cbind(spaisos[,c(2,4,5,7,8)],CONT[,1:4]))
 colnames(X[,6:9]) <- name[1:4]
